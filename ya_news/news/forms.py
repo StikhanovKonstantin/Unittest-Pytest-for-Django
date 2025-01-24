@@ -6,7 +6,6 @@ from .models import Comment
 BAD_WORDS = (
     'редиска',
     'негодяй',
-    # Дополните список на своё усмотрение.
 )
 WARNING = 'Не ругайтесь!'
 

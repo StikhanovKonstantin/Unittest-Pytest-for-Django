@@ -52,6 +52,7 @@ class TestNoteCreation(TestCase):
         cls.auth_client = Client()
         cls.auth_client.force_login(cls.user)
         cls.form_data = {'text': cls.NOTE_TEXT, 'title': cls.NOTE_TITLE}
+        cls.start_notes_count = Note.objects.count()
 
     def test_anonymous_user_cant_create_note(self):
         """
@@ -60,7 +61,7 @@ class TestNoteCreation(TestCase):
         """
         self.client.post(self.url, data=self.form_data)
         notes_count = Note.objects.count()
-        self.assertEqual(notes_count, 0)
+        self.assertEqual(notes_count, self.start_notes_count)
 
     def test_auth_user_can_create_notes(self):
         """
@@ -72,7 +73,7 @@ class TestNoteCreation(TestCase):
         # переводят на страницу успешного выполнения.
         self.assertRedirects(response, self.redirect_url)
         notes_count = Note.objects.count()
-        self.assertEqual(notes_count, 1)
+        self.assertEqual(notes_count, self.start_notes_count + 1)
         note = Note.objects.get()
         # Сверяем отправленные данные для заметки с текущей заметкой.
         self.assertEqual(note.text, self.NOTE_TEXT)
@@ -84,28 +85,28 @@ class TestNoteCreation(TestCase):
         Проверяет, что при создании заметки, указав в поле slug
         уже существующий slug, заметка не будет создана и вызовется ошибка.
         """
-        data_1 = {
+        first_note: dict = {
             'text': self.NOTE_TEXT,
             'title': self.NOTE_TITLE,
             'slug': 'similar_slug'
         }
-        data_2 = {
+        second_note: dict = {
             'text': self.NOTE_TEXT + '_2',
             'title': self.NOTE_TITLE + '_2',
             'slug': 'similar_slug'
         }
-        self.auth_client.post(self.url, data_1)
+        self.auth_client.post(self.url, first_note)
         # Создаем 2-ю заметку с одинаковым слагом.
-        response_2 = self.auth_client.post(self.url, data_2)
+        response_2 = self.auth_client.post(self.url, second_note)
         self.assertFormError(
             response_2,
             form='form',
             field='slug',
-            errors=data_2['slug'] + WARNING
+            errors=second_note['slug'] + WARNING
         )
         # Убедимся, что комментарий не будет создан.
         notes_count = Note.objects.count()
-        self.assertEqual(notes_count, 1)
+        self.assertEqual(notes_count, self.start_notes_count + 1)
 
 
 class TestNoteEditDelete(TestCase):
@@ -143,6 +144,7 @@ class TestNoteEditDelete(TestCase):
             'text': cls.NEW_NOTES_TEXT,
             'title': cls.NEW_NOTES_TITLE
         }
+        cls.start_notes_count = Note.objects.count()
 
     def test_author_can_delete_notes(self):
         """Проверяет, что автор может удалять свои заметки."""
@@ -151,7 +153,7 @@ class TestNoteEditDelete(TestCase):
         self.assertRedirects(response, self.success_url)
         notes_count = Note.objects.count()
         # Проверяем, что после удаления в БД не осталось объектов.
-        self.assertEqual(notes_count, 0)
+        self.assertEqual(notes_count, self.start_notes_count - 1)
 
     def test_user_cant_delete_notes_of_another_user(self):
         """Проверяет, что простой читатель не может удалять чужие заметки."""
@@ -159,7 +161,7 @@ class TestNoteEditDelete(TestCase):
         self.assertEqual(response.status_code, HTTPStatus.NOT_FOUND)
         # Убедимся, что заметки остались на месте.
         notes_count = Note.objects.count()
-        self.assertEqual(notes_count, 1)
+        self.assertEqual(notes_count, self.start_notes_count)
 
     def test_author_can_edit_notes(self):
         """Проверяет, что автор может редактировать свои заметки."""

@@ -5,7 +5,9 @@ from django.conf import settings
 from news.forms import CommentForm
 
 
-@pytest.mark.django_db
+pytestmark = pytest.mark.django_db
+
+
 def test_news_count(client, ten_news_homepage, home_url):
     """Проверяет, что на главной странице отображается 10 новостей."""
     response = client.get(home_url)
@@ -14,7 +16,6 @@ def test_news_count(client, ten_news_homepage, home_url):
     assert news_count == settings.NEWS_COUNT_ON_HOME_PAGE
 
 
-@pytest.mark.django_db
 def test_news_ordering(client, ten_news_homepage, home_url):
     """Сортировка на главной странице, от новых к старым записям."""
     response = client.get(home_url)
@@ -24,7 +25,6 @@ def test_news_ordering(client, ten_news_homepage, home_url):
     assert all_dates == sorted_dates
 
 
-@pytest.mark.django_db
 def test_comment_ordering(client, news, ten_comments, news_detail_url):
     """
     Сортировка комментариев на странице отдельной новости.
@@ -39,7 +39,6 @@ def test_comment_ordering(client, news, ten_comments, news_detail_url):
     assert all_timestamps == sorted_timestamps
 
 
-@pytest.mark.django_db
 def test_anonymous_client_has_no_form(client, news_detail_url):
     """
     Проверяет, что на странице новости у неавторизованного

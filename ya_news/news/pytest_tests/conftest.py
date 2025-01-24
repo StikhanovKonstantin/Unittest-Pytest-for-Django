@@ -1,13 +1,13 @@
 from datetime import datetime, timedelta
 
 import pytest
-
 from django.test.client import Client
 from django.conf import settings
 from django.utils import timezone
 from django.urls import reverse
 
 from news.models import News, Comment
+from .constants import OBJECTS_FOR_TESTS
 
 
 @pytest.fixture
@@ -41,41 +41,31 @@ def not_author_client(not_author):
 @pytest.fixture
 def news():
     """Создает объект новости."""
-    news = News.objects.create(
-        title='Заголовок',
-        text='Текст'
+    return (
+        News.objects.create(
+            title='Заголовок',
+            text='Текст'
+        )
     )
-    return news
 
 
 @pytest.fixture
 def comment(author, news):
     """Создает объект комментария."""
-    comment = Comment.objects.create(
-        news=news,
-        author=author,
-        text='Текст комментария'
+    return (
+        Comment.objects.create(
+            news=news,
+            author=author,
+            text='Текст комментария'
+        )
     )
-    return comment
-
-
-@pytest.fixture
-def id_for_news(news):
-    """Подготавливает id для получения новости."""
-    return (news.id,)
-
-
-@pytest.fixture
-def id_for_comment(comment):
-    """Подготавливает id для получения комментария."""
-    return (comment.id,)
 
 
 @pytest.fixture
 def ten_news_homepage():
     """Создает 10 объектов новостей."""
     today = datetime.today()
-    ten_news = News.objects.bulk_create(
+    News.objects.bulk_create(
         News(
             title=f"Новость {index}",
             text="Просто текст.",
@@ -83,21 +73,25 @@ def ten_news_homepage():
         )
         for index in range(settings.NEWS_COUNT_ON_HOME_PAGE + 1)
     )
-    return ten_news
 
 
 @pytest.fixture
 def ten_comments(news, author):
     """Создает 10 объектов комментариев."""
     now = timezone.now()
-    for index in range(10):
-        comment = Comment.objects.create(
+    for index in range(OBJECTS_FOR_TESTS):
+        Comment.objects.create(
             news=news,
             author=author,
             text=f'Текст {index}',
+            created=now + timedelta(days=index)
         )
-        comment.created = now + timedelta(days=index)
-        comment.save()
+
+
+@pytest.fixture
+def start_comments_count():
+    """Возвращает начальное кол-во комментариев в базе данных."""
+    return Comment.objects.count()
 
 
 @pytest.fixture

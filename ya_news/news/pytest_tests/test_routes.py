@@ -11,8 +11,8 @@ from pytest_django.asserts import assertRedirects
 @pytest.mark.parametrize(
     'name, args',
     (
-        ('news:home', None),
-        ('news:detail', pytest.lazy_fixture('id_for_news')),
+        (pytest.lazy_fixture('home_url'), 1),
+        (pytest.lazy_fixture('news_detail_url'), 1),
         ('users:login', None),
         ('users:logout', None),
         ('users:signup', None),
@@ -20,16 +20,19 @@ from pytest_django.asserts import assertRedirects
 )
 def test_pages_availability_for_anon_users(client, name, args):
     """Проверяет доступ к страницам для неавторизованных пользователей."""
-    url = reverse(name, args=args)
+    if args is None:
+        url = reverse(name, args=args)
+    else:
+        url = name
     response = client.get(url)
     assert response.status_code == HTTPStatus.OK
 
 
 @pytest.mark.parametrize(
-    'name, args',
+    'url',
     (
-        ('news:edit', pytest.lazy_fixture('id_for_comment')),
-        ('news:delete', pytest.lazy_fixture('id_for_comment')),
+        (pytest.lazy_fixture('comment_edit_url')),
+        (pytest.lazy_fixture('comment_delete_url')),
     ),
 )
 @pytest.mark.parametrize(
@@ -40,25 +43,23 @@ def test_pages_availability_for_anon_users(client, name, args):
     ),
 )
 def test_availability_for_comment_edit_and_delete(
-    name, parametrized_client, expected_status, comment, args
+    url, parametrized_client, expected_status, comment
 ):
     """Проверяет доступ к изменению/удалению комментариев."""
-    url = reverse(name, args=args)
     response = parametrized_client.get(url)
     assert response.status_code == expected_status
 
 
 @pytest.mark.parametrize(
-    'name, args',
+    'url',
     (
-        ('news:edit', pytest.lazy_fixture('id_for_comment')),
-        ('news:delete', pytest.lazy_fixture('id_for_comment')),
+        (pytest.lazy_fixture('comment_edit_url')),
+        (pytest.lazy_fixture('comment_delete_url')),
     )
 )
-def test_redirect_for_anonymous_client(client, name, args):
+def test_redirect_for_anonymous_client(client, url):
     """Проверяет редирект неавторизованного пользователя."""
     login_url = reverse('users:login')
-    url = reverse(name, args=args)
     redirect_url = f'{login_url}?next={url}'
     response = client.get(url)
     assertRedirects(response, redirect_url)

@@ -1,16 +1,17 @@
 from http import HTTPStatus
 
 import pytest
-
 from pytest_django.asserts import assertRedirects, assertFormError
 
 from news.forms import BAD_WORDS, WARNING
 from news.models import Comment
 
 
-@pytest.mark.django_db
+pytestmark = pytest.mark.django_db
+
+
 def test_anonymous_user_cant_create_comment(
-    client, comment_data, news_detail_url
+    client, comment_data, news_detail_url, start_comments_count
 ):
     """
     Проверяет то, что неавторизованный пользователь
@@ -18,11 +19,12 @@ def test_anonymous_user_cant_create_comment(
     """
     client.post(news_detail_url, data=comment_data)
     comments_count = Comment.objects.count()
-    assert comments_count == 0
+    assert comments_count == start_comments_count
 
 
 def test_user_can_create_comment(
-    author_client, news_detail_url, comment_data, news, author
+    author_client, news_detail_url,
+    comment_data, news, author, start_comments_count
 ):
     """
     Проверяет, что авторизованный пользователь
@@ -31,7 +33,7 @@ def test_user_can_create_comment(
     response = author_client.post(news_detail_url, data=comment_data)
     assertRedirects(response, f'{news_detail_url}#comments')
     comment_count = Comment.objects.count()
-    assert comment_count == 1
+    assert comment_count == start_comments_count + 1
     comment = Comment.objects.get()
     assert comment.news == news
     assert comment.author == author
@@ -39,15 +41,18 @@ def test_user_can_create_comment(
 
 
 def test_user_cant_use_bad_words(
-    author_client, news_detail_url
+    author_client, news_detail_url, start_comments_count
 ):
     """
     Проверяет, что в форму комментария попадают
     только валидные данные.
     """
     # Формируем данные для отправки формы; текст включает
-    # первое слово из списка стоп-слов.
-    bad_words_data = {'text': f'Какой-то текст, {BAD_WORDS[0]}, еще текст'}
+    # все слова из списка запрещённых слов.
+    all_bad_words: str = ', '.join(BAD_WORDS)
+    bad_words_data = {
+        'text': f'Какой-то текст, {all_bad_words}, еще текст'
+    }
     response = author_client.post(news_detail_url, bad_words_data)
     assertFormError(
         response,
@@ -56,27 +61,27 @@ def test_user_cant_use_bad_words(
         errors=WARNING
     )
     comment_count = Comment.objects.count()
-    assert comment_count == 0
+    assert comment_count == start_comments_count
 
 
 def test_author_can_delete_comment(
-    author_client, comment_delete_url, url_to_comments
+    author_client, comment_delete_url, url_to_comments, start_comments_count
 ):
     """Проверяет, что автор комментария может его удалить."""
     response = author_client.delete(comment_delete_url)
     assertRedirects(response, url_to_comments)
     comments_count = Comment.objects.count()
-    assert comments_count == 0
+    assert comments_count == start_comments_count - 1
 
 
 def test_user_cant_delete_comments_of_others(
-    not_author_client, comment_delete_url, url_to_comments
+    not_author_client, comment_delete_url, comment
 ):
     """Проверяет, что пользователь не может удалить чужой комментарий."""
     response = not_author_client.delete(comment_delete_url)
     assert response.status_code == HTTPStatus.NOT_FOUND
-    comments_count = Comment.objects.count()
-    assert comments_count == 1
+    exists = Comment.objects.filter(id=comment.id).exists()
+    assert exists
 
 
 def test_author_can_edit_comment(
