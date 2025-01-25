@@ -40,8 +40,11 @@ def test_user_can_create_comment(
     assert comment.text == comment_data['text']
 
 
+@pytest.mark.parametrize(
+    'bad_words', BAD_WORDS
+)
 def test_user_cant_use_bad_words(
-    author_client, news_detail_url, start_comments_count
+    author_client, news_detail_url, start_comments_count, bad_words
 ):
     """
     Проверяет, что в форму комментария попадают
@@ -49,9 +52,8 @@ def test_user_cant_use_bad_words(
     """
     # Формируем данные для отправки формы; текст включает
     # все слова из списка запрещённых слов.
-    all_bad_words: str = ', '.join(BAD_WORDS)
     bad_words_data = {
-        'text': f'Какой-то текст, {all_bad_words}, еще текст'
+        'text': f'Какой-то текст, {bad_words}, еще текст'
     }
     response = author_client.post(news_detail_url, bad_words_data)
     assertFormError(
@@ -65,13 +67,13 @@ def test_user_cant_use_bad_words(
 
 
 def test_author_can_delete_comment(
-    author_client, comment_delete_url, url_to_comments, start_comments_count
+    author_client, comment_delete_url, url_to_comments, comment
 ):
     """Проверяет, что автор комментария может его удалить."""
     response = author_client.delete(comment_delete_url)
     assertRedirects(response, url_to_comments)
-    comments_count = Comment.objects.count()
-    assert comments_count == start_comments_count - 1
+    exists = Comment.objects.filter(id=comment.id).exists()
+    assert not exists
 
 
 def test_user_cant_delete_comments_of_others(

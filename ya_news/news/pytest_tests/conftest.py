@@ -41,12 +41,7 @@ def not_author_client(not_author):
 @pytest.fixture
 def news():
     """Создает объект новости."""
-    return (
-        News.objects.create(
-            title='Заголовок',
-            text='Текст'
-        )
-    )
+    return News.objects.create(title='Заголовок', text='Текст')
 
 
 @pytest.fixture
